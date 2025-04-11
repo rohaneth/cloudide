@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql_container
+    environment:
+      MYSQL_ROOT_PASSWORD: 8975733849@Aa12
+      MYSQL_DATABASE: handytd
+      MYSQL_PASSWORD: 8975733849@Aa12
+    ports:
+      - "3307:3306"
+    networks:
+      - springboot-mysql-net
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: springboot_app
+    depends_on:
+      - mysql
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/handytd
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 8975733849@Aa12
+    ports:
+      - "8080:8080"
+    networks:
+      - springboot-mysql-net
+
+networks:
+  springboot-mysql-net:

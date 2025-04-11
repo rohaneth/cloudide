@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Terminal Logs</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.0/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            margin: 20px;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+        }
+        #logOutput {
+            background-color: #252526;
+            padding: 10px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #3c3c3c;
+        }
+        #commandInput {
+            width: 80%;
+            padding: 8px;
+            margin-right: 10px;
+            background-color: #3c3c3c;
+            color: #d4d4d4;
+            border: 1px solid #3c3c3c;
+            border-radius: 3px;
+        }
+        button {
+            padding: 8px 15px;
+            background-color: #0e639c;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #1177bb;
+        }
+        .input-container {
+            margin-bottom: 20px;
+            display: flex;
+        }
+    </style>
+</head>
+<body>
+    <h2>Terminal</h2>
+    <div class="input-container">
+        <input type="text" id="commandInput" placeholder="Enter command..." />
+        <button onclick="executeCommand()">Execute</button>
+    </div>
+    <div id="logOutput"></div>
+
+    <script>
+        let stompClient = null;
+
+        function connect() {
+            const socket = new SockJS('/ws');
+            stompClient = Stomp.over(socket);
+            stompClient.connect({}, function(frame) {
+                console.log('Connected: ' + frame);
+                stompClient.subscribe('/topic/output', function(response) {
+                    const logOutput = document.getElementById('logOutput');
+                    logOutput.textContent += response.body;
+                    logOutput.scrollTop = logOutput.scrollHeight;
+                });
+            });
+        }
+
+        function executeCommand() {
+            const command = document.getElementById('commandInput').value;
+            if (!command) return;
+
+            // Clear previous output
+            document.getElementById('logOutput').textContent = '';
+
+            if (stompClient && stompClient.connected) {
+                stompClient.send("/app/terminal", {}, command);
+            } else {
+                document.getElementById('logOutput').textContent = "WebSocket connection lost. Reconnecting...";
+                connect();
+            }
+        }
+
+        // Handle Enter key in input
+        document.getElementById('commandInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                executeCommand();
+            }
+        });
+
+        // Connect when page loads
+        connect();
+    </script>
+</body>
+</html> 
