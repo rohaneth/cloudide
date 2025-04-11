@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Secure WebSocket Terminal</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.0/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        body {
+            font-family: monospace;
+            background-color: #1e1e1e;
+            color: #ffffff;
+            padding: 20px;
+        }
+        #output {
+            background-color: #2d2d2d;
+            padding: 10px;
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #444;
+            margin-bottom: 10px;
+        }
+        #command {
+            width: 100%;
+            padding: 5px;
+            background-color: #2d2d2d;
+            color: #ffffff;
+            border: 1px solid #444;
+        }
+        .prompt {
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div id="output"></div>
+    <input type="text" id="command" placeholder="Enter command...">
+    
+    <script>
+        const output = document.getElementById('output');
+        const commandInput = document.getElementById('command');
+        let stompClient = null;
+        let token = null;
+
+        // Get JWT token from localStorage or prompt user
+        function getToken() {
+            token = localStorage.getItem('jwtToken');
+            if (!token) {
+                token = prompt('Please enter your JWT token:');
+                if (token) {
+                    localStorage.setItem('jwtToken', token);
+                }
+            }
+            return token;
+        }
+
+        function connect() {
+            const socket = new SockJS('/ws-terminal');
+            stompClient = Stomp.over(socket);
+            
+            const headers = {
+                'Authorization': 'Bearer ' + getToken()
+            };
+
+            stompClient.connect(headers, function(frame) {
+                console.log('Connected: ' + frame);
+                stompClient.subscribe('/topic/terminal', function(response) {
+                    showOutput(response.body);
+                });
+            }, function(error) {
+                console.log('Error: ' + error);
+                showOutput('Connection error. Please check your token and try again.');
+            });
+        }
+
+        function showOutput(message) {
+            output.innerHTML += '<div>' + message + '</div>';
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function sendCommand(command) {
+            if (stompClient && stompClient.connected) {
+                stompClient.send("/app/terminal/command", {}, command);
+                showOutput('<span class="prompt">$ ' + command + '</span>');
+            } else {
+                showOutput('Not connected to server');
+            }
+        }
+
+        commandInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const command = commandInput.value;
+                commandInput.value = '';
+                sendCommand(command);
+            }
+        });
+
+        // Connect when page loads
+        connect();
+    </script>
+    
+</body>
+</html>
